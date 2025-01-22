@@ -31,6 +31,8 @@ namespace QueueServicesPoc.Implementation
 
         private readonly ILogger _logger;
 
+        private Task? _processingTask;
+
         private KeySpecificQueuedProcessor(string processorKey, ILogger logger)
         {
             ProcessorKey = processorKey;
@@ -39,7 +41,7 @@ namespace QueueServicesPoc.Implementation
 
         private void StartProcessing(CancellationToken cancellationToken = default)
         {
-            Task.Factory.StartNew(
+            _processingTask = Task.Factory.StartNew(
                 async () =>
                 {
                     await foreach (var function in _internalQueue.Reader.ReadAllAsync(cancellationToken))
@@ -63,6 +65,15 @@ namespace QueueServicesPoc.Implementation
 
             Processing = true;
             await _internalQueue.Writer.WriteAsync(functionWithKey);
+        }
+
+        public async Task StopProcessing()
+        {
+            _internalQueue.Writer.Complete();
+            if (_processingTask != null)
+            {
+                await _processingTask;
+            }
         }
 
         public static KeySpecificQueuedProcessor CreateAndStartProcessing(string processorKey, ILogger logger, CancellationToken processingCancellationToken = default)

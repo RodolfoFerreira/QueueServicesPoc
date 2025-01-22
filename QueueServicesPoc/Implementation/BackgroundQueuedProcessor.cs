@@ -17,6 +17,8 @@ namespace QueueServicesPoc.Implementation
 
         private readonly ILogger<BackgroundQueuedProcessor> _logger;
 
+        private BackgroundQueuedProcessorMonitor? _monitor;
+
         public BackgroundQueuedProcessor(ILoggerFactory loggerFactory)
         {
             _loggerFactory = loggerFactory;
@@ -25,6 +27,7 @@ namespace QueueServicesPoc.Implementation
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _monitor = BackgroundQueuedProcessorMonitor.CreateAndStartMonitoring(_processorsLock, _dataProcessors, _loggerFactory.CreateLogger<BackgroundQueuedProcessorMonitor>(), stoppingToken);
             await foreach (var function in _internalQueue.Reader.ReadAllAsync(stoppingToken))
             {
                 if (!await _processorsLock.WaitWithCancellation(stoppingToken))
@@ -38,6 +41,8 @@ namespace QueueServicesPoc.Implementation
                 _processorsLock.Release();
                 _logger.LogInformation("Scheduled new function '{Function}' for processor with key '{Key}'", function, function.Key);
             }
+
+            await _monitor.StopMonitoring();
         }
 
         private KeySpecificQueuedProcessor GetOrCreateQueuedProcessor(string key, CancellationToken newProcessorCancellationToken = default)

@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using QueueServicesPoc.Implementation;
 using QueueServicesPoc.Interfaces;
+using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
